@@ -15,11 +15,21 @@
 import logging
 import os
 import unittest
-from google.cloud.logging.resource import Resource
 
 
 class TestAppEngineHandlerHandler(unittest.TestCase):
-    PROJECT = 'PROJECT'
+    from google.cloud.logging.resource import Resource
+
+    GAE_PROJECT_ENV = 'PROJECT'
+
+    GAE_RESOURCE = Resource(
+        type='gae_app',
+        labels={
+            'project_id': os.environ.get(GAE_PROJECT_ENV),
+            'module_id': os.environ.get('GAE_SERVICE'),
+            'version_id': os.environ.get('GAE_VERSION'),
+        },
+    )
 
     def _get_target_class(self):
         from google.cloud.logging.handlers.app_engine import AppEngineHandler
@@ -30,21 +40,13 @@ class TestAppEngineHandlerHandler(unittest.TestCase):
         return self._get_target_class()(*args, **kw)
 
     def test_ctor(self):
-        client = _Client(self.PROJECT)
+        client = _Client(self.GAE_PROJECT_ENV)
         handler = self._make_one(client, transport=_Transport)
         self.assertEqual(handler.client, client)
+        self.assertEqual(handler.resource, self.GAE_RESOURCE)
 
     def test_emit(self):
-        RESOURCE = Resource(
-            type='gae_app',
-            labels={
-                'project_id': os.getenv('GCLOUD_PROJECT'),
-                'module_id': os.getenv('GAE_SERVICE'),
-                'version_id': os.getenv('GAE_VERSION'),
-            },
-        )
-
-        client = _Client(self.PROJECT)
+        client = _Client(self.GAE_PROJECT_ENV)
         handler = self._make_one(client, transport=_Transport)
         logname = 'loggername'
         message = 'hello world'
@@ -52,7 +54,7 @@ class TestAppEngineHandlerHandler(unittest.TestCase):
                                    None, None)
         handler.emit(record)
 
-        self.assertEqual(handler.transport.send_called_with, (record, message, RESOURCE))
+        self.assertEqual(handler.transport.send_called_with, (record, message, self.GAE_RESOURCE))
 
 
 class _Client(object):

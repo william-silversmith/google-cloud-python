@@ -14,35 +14,26 @@
 
 """Logging handler for App Engine Flexible
 
-Logs to the well-known file that the fluentd sidecar container on App Engine
-Flexible is configured to read from and send to Stackdriver Logging.
-
-See the fluentd configuration here:
-
-https://github.com/GoogleCloudPlatform/appengine-sidecars-docker/tree/master/fluentd_logger
+Send logs to Stackdriver Logging API.
 """
 
-# This file is largely copied from:
-#  https://github.com/GoogleCloudPlatform/python-compat-runtime/blob/master
-# /appengine-vmruntime/vmruntime/cloud_logging.py
-
-import logging.handlers
 import os
 
 from google.cloud.logging.handlers.handlers import CloudLoggingHandler
+from google.cloud.logging.handlers.handlers import EXCLUDED_LOGGER_DEFAULTS
 from google.cloud.logging.handlers.transports import BackgroundThreadTransport
 from google.cloud.logging.resource import Resource
 
-DEFAULT_LOGGER_NAME = 'python'
+GAE_PROJECT_ENV = 'GCLOUD_PROJECT'
 
-EXCLUDED_LOGGER_DEFAULTS = ('google.cloud', 'oauth2client')
+DEFAULT_LOGGER_NAME = 'projects/{}/logs/app'.format(os.environ.get(GAE_PROJECT_ENV))
 
 GAE_RESOURCE = Resource(
     type='gae_app',
     labels={
-        'project_id': os.getenv('GCLOUD_PROJECT'),
-        'module_id': os.getenv('GAE_SERVICE'),
-        'version_id': os.getenv('GAE_VERSION'),
+        'project_id': os.environ.get(GAE_PROJECT_ENV),
+        'module_id': os.environ.get('GAE_SERVICE'),
+        'version_id': os.environ.get('GAE_VERSION'),
     },
 )
 
@@ -77,7 +68,6 @@ class AppEngineHandler(CloudLoggingHandler):
     """
 
     def __init__(self, client,
-                 name=DEFAULT_LOGGER_NAME,
-                 transport=BackgroundThreadTransport,
-                 resource=GAE_RESOURCE):
-        super(AppEngineHandler, self).__init__(client, name, transport, resource)
+                 name=EXCLUDED_LOGGER_DEFAULTS,
+                 transport=BackgroundThreadTransport):
+        super(AppEngineHandler, self).__init__(client, name, transport, resource=GAE_RESOURCE)
